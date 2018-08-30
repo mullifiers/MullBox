@@ -27,16 +27,8 @@
 html {
   /* Disable text selection, or your app will feel like a web page */
   -webkit-user-select: none;
-  /*-webkit-app-region: drag;
-
-  /* Cover the whole window */
+  /*-webkit-app-region: drag;*/
   height: 100%;
-
-  /* Make sure this matches the native window background color that you pass to
-   * electron.BrowserWindow({...}), otherwise your app startup will look janky. */
- 
-  
-  /* Smoother startup */
   animation: fadein 1s;
 }
 
@@ -57,6 +49,7 @@ html {
     </style>
         
 </head> 
+
     <script src="./node_modules/angular/angular.js"></script>
     <script src="./node_modules/angular-animate/angular-animate.js"></script>
     <script src="./node_modules/angular-aria/angular-aria.js"></script>
@@ -66,14 +59,14 @@ html {
     <script src="./node_modules/angular-timeline/dist/angular-timeline.js"></script>
     <script src="./node_modules/ng-file-upload/dist/ng-file-upload.js"></script>
     <script src="./node_modules/angular-hotkeys/build/hotkeys.js"></script>
-    <script src="./node_modules/ng-infinite-scroll/build/ng-infinite-scroll.js"></script>
-    
-<!-- Odometr includes -->
-<link rel="stylesheet" href="https://github.com/HubSpot/odometer/blob/master/themes/odometer-theme-default.css" />
-<script src="https://raw.githubusercontent.com/HubSpot/odometer/v0.4.6/odometer.min.js"></script>
+ 
+        <script src="./node_modules/angular-ui-scroll/dist/ui-scroll.js"></script>
+        <script src="./node_modules/angular-ui-scroll/dist/ui-scroll-grid.js"></script>
 
-    <script>
-        var app=angular.module('myApp',['ngMaterial','ngAnimate','infinite-scroll','ngAria','ngMessages','ngFileUpload','angular-scroll-animate','angular-timeline','PatientBufferModule','AnimationsModule','Medicines','cfp.hotkeys'])
+   
+    
+ <script>
+        var app=angular.module('myApp',['ngMaterial','ngAnimate','ngMessages','ngFileUpload','angular-scroll-animate','angular-timeline','AnimationsModule','MovieBufferModule','cfp.hotkeys','ui.scroll', 'ui.scroll.grid'])
         .config(function($mdThemingProvider){
             $mdThemingProvider.theme('default')
             
@@ -83,19 +76,13 @@ html {
         });
         
     </script>
-    
+  
     <script src="./js/controllers/cardsCtrl.js"></script>
     <script src="./js/controllers/openPatientCtrl.js"></script>
-    <script src="./js/controllers/addPatientCtrl.js"></script>
-    <script src="./js/services/PatientBuffer.js"></script>
-    <script src="./js/services/Medicines.js"></script>
+   
     <script src="./js/services/Animations.js"></script>
-    <script src="./js/services/iconSetProvider.js"></script>
-    <script src="./js/filters/relativeTime.js"></script>
-    <script src="./js/filters/unique.js"></script>
-    <script src="./js/filters/fileSize.js"></script>
 
-  
+         <script src="./js/services/MovieBuffer.js"></script>
 
 <body layout-fill layout="column">
 <div layout="column">
@@ -120,12 +107,8 @@ html {
       
    <md-autocomplete    class="cardctrl"
           md-colors="{background: 'primary-400' }"
-          ng-disabled="ctrl.isDisabled"
-          md-no-cache="ctrl.noCache"
-          md-selected-item="ctrl.selectedItem"
           md-search-text-change="ctrl.searchTextChange(ctrl.searchText)"
           md-search-text="ctrl.searchText"
-          md-selected-item-change="ctrl.selectedItemChange(item)"
           md-items="item in ctrl.querySearch(ctrl.searchText)"
           
           md-item-text="item.display"
@@ -159,24 +142,34 @@ html {
            <div flex layout="column" style="padding-right: 24px" layout-align="end end " show-gt-sm hide>
            <md-button class="md-icon-button"  ng-click="ctrl.hotkeys.toggleCheatSheet()"><md-icon >help_outline</md-icon></md-button>
            </div>
-        <div></div>
+        <div>
+    <md-slider ng-change="ctrl.setZoom()" min="128" max="200" ng-model="ctrl.zoom"    aria-label="red"></md-slider>
+</div>
 </md-toolbar>
             
 </div>
 
-<md-content   id="PatientCardsWindow">
 
-<div flex style="margin-right: 10%;margin-left: 10%; margin-top: 150px;margin-bottom: 10px;padding-bottom:100px;overflow: hidden">
-<div   infinite-scroll-distance="1" layout="row" layout-align="center" layout-wrap>
 
-<div flex="100" flex-gt-sm="50"  flex-gt-md="33"   data-ng-repeat="card in values=(ctrl.ref | filter: ctrl.searchText | limitTo:ctrl.limit) track by $index" >
-    <div class="animated fadeIn" >
-        
+
+
+
+
+
+<md-content layout='row' ui-scroll-viewport  scrolly id="PatientCardsWindow">
+
+<div  flex style="margin-right: 8%;margin-left: 8%; margin-top: 150px;margin-bottom: 10px;padding-bottom:100px;overflow: hidden">
+<div layout="row"   layout-align="center" layout-wrap>
+
+<div flex="100" flex-gt-sm="50"   buffer-size='1' padding='0.3' adapter="ctrl.MovieBuffer.adapter"  ui-scroll="card in movieDataSource " >
+    <div style="padding-right:10px;padding-left:10px" class="animated fadeIn" >
+   
     <md-card  >
         <md-card-title>
             <div layout="row" layout-fill>
                 
           <md-card-title-text flex-xs="100" flex="60" layout="column" layout-fill>
+             
             <span class="md-subtitle"   id="name">{{card.original_title}}</span>
             <span class="md-subhead" flex>year : {{card.year}}</span>
             <span class="md-subhead" flex>type : {{card.type}}</span>
@@ -224,9 +217,9 @@ html {
           
           <md-card-title-media hide-xs  flex="40" layout="column" layout-align="start end">
             <div class="md-media-md card-media" style="background-size: cover;
-
+         
     background-color: {{ctrl.colors.getThemeColor('primary-400')}};
-    background-image: url(https://image.tmdb.org/t/p/w92/{{card.poster_path}});
+    background-image: url({{ctrl.posterParse(card.poster_path)}});
     width:100px; margin:10px" ></div>
           </md-card-title-media>
             </div>
@@ -268,7 +261,7 @@ html {
           </div>
         </md-card-title>
     </md-card>
-     <div style="margin: 10vh" class="md-title" ng-if='!ctrl.complete'>
+     <div flex style="margin: 10vh"  class="md-title" ng-if='!ctrl.MovieBuffer.complete'>
         <div layout="row"   layout-align="space-around space-around">
                           <md-progress-circular class="animated fadeIn" md-mode="indeterminate"   color="primary"></md-progress-circular>
                     </div>
@@ -276,14 +269,14 @@ html {
                                 color: #74858c;
                                 font-family: 'agency fb';
                                 text-align: center ">
-                    <div class="animated fadeIn" ng-if="ctrl.caching">
-                            fetching posters & movie details from tmdb.org <span ng-if="ctrl.percentComplete<100">... <odometer value="{{ctrl.percentComplete}}"></odometer>%</span>
+                    <div class="animated fadeIn" ng-if="ctrl.MovieBuffer.caching">
+                            fetching posters & movie details from tmdb.org ...{{ctrl.MovieBuffer.percentComplete}}%
                      </div>
-                     <div class="animated fadeIn" ng-if="ctrl.buildingLibrary&&!ctrl.caching">
+                     <div class="animated fadeIn" ng-if="ctrl.MovieBuffer.buildingLibrary&&!ctrl.MovieBuffer.caching">
                             building up Library
                      </div>
-                     <div class="animated fadeIn" ng-if="ctrl.findingTitles">
-                            {{ctrl.count}} title(s) found 
+                     <div class="animated fadeIn" ng-if="ctrl.MovieBuffer.findingTitles">
+                            {{ctrl.MovieBuffer.count}} title(s) found 
                      </div> 
                     </div>      
         </div>

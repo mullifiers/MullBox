@@ -1,222 +1,138 @@
-const PATHVAR=require('path');
 
-
-var PatientBufferModule = angular.module('PatientBufferModule',[])
-.service('PatientBuffer',function($http,$filter,$mdDialog,$mdToast,Upload,Medicines){
+angular.module('MovieBufferModule',[]).service('MovieBuffer',function($mdDialog,$mdToast){
         
         
         var self=this;
+       
         self.port = 3000;
-
-        
+ var path=require('path');
+    const MovieDB = require('moviedb')('1996ea36a9699c6abf05c390ae044265');
+    self.count=0;
+    self.movies={ref:[]};
+     self.moviesDetails=[];
+    self.crawled=0;
+    self.buffer=0;
+        var electron=require('electron').remote;
+var ipc=require('electron').ipcRenderer
+var ipcBackend=electron.ipcMain;
+var backend=electron.app
+var BrowserWindow=electron.BrowserWindow
       
-        self.restoreMedicinesList=function(){
-            Medicines.medicinesList=$filter('orderBy')(self.Prescriptions,'-date')[0].info.medicines.slice(0);
-            Medicines.medicinesListOpen=true;
-        }
-        self.loading=false;
-        self.NewSymptoms=[];
-       /* 
-    self.PatientCards = [{_id:'40A66',name:'Rahul gupta', phone:'555-1276',gender:"M"},
-                         {_id:'988GL',name:'Nitin gadkari', phone:'800-BIG-MARY',gender:"M"},
-                         {name:'rajnath singh', phone:'555-4321',gender:"F"},
-                         {name:'manoher parrikar', phone:'555-5678',gender:"M"},
-                         {name:'shri narendar damomodar shamal das modi : he is ma idial dude', phone:'555-5678',gender:"F"},
-                         {name:'Amit Shah', phone:'555-8765',gender:"F"},
-                         {name:'lakshay garg', phone:'555-5678',gender:"F"},
-                         {name:'chako solo wakiya', phone:'555-5678',gender:"F"},
-                         {name:'ghajni ammir khna', phone:'555-5678',gender:"F",prescription:{days:9896}}];
-    */
-      self.progress=-1;
-      self.showToast=function(){
-        
-
-      }
-      self.attachmentsIsEmpty=function(){
-        return (JSON.stringify(self.attachments)=='[]')||!self.attachments;
-      }
-      self.openExt=function(file)
-      {
-        //console.log(file);
-        //alert(JSON.stringify( file));
-        //console.log(JSON.stringify( kv));
-          remote.shell.openExternal(file.path.dir+'\\'+file.path.base);
-      }
-      self.states=null;
+      ipcBackend.on('buffer',(e,a)=>{self.buffer=a;})
+      ipcBackend.once('found',()=>{ self.findingTitles=true})
+      ipcBackend.on('pulkit',()=>{
+        self.complete=true;
       
-      self.getCitiesJSON=function(){
-              return $http.get('forms/assets/cities.json')
+        $mdToast.show(
+                        {
+                            template:'<md-toast>'+
+                                          '<div style="color:#bbff90" class="md-toast-content">'+
+                                           '   Showcase is Ready  '+
+                                            '<md-icon style="margin-right:0px;color:#bbff90">done</md-icon>'+
+                                          '</div>'+
+                                      '</md-toast>',
+
+                            hideDelay:2000,
+                            controller:'toastCtrl',
+                            position:"top right"
+                        }
+                        );
+          ipcBackend.removeAllListeners();
+      })
+      var mainWindow = new BrowserWindow({
+        show:false
+      });
+      mainWindow.loadURL( path.join(__dirname,'taskpool','backend.html') )
+      console.log( path.join(__dirname,'taskpool','backend.html') )
+      ipcBackend.once('searchcomp',(e,d)=>{
+        self.count=d;
+      })
+      
+      
+      ipcBackend.on('movieCrawled',(e,d)=>{
+        
+        
+         //var k=$scope.$apply(()=>{
+        self.crawled++;
+        //alert('got 1 packet')
+        var data=JSON.parse(d);
+        data.forEach((i)=>{
+            self.moviesDetails.push(i)
+            self.movies.ref.push({
+              original_title:i.original_title,
+              release_group:i.release_group,
+              type:i.type,
+              year:i.year,
+              vote_average:i.vote_average,
+              poster_path:i.poster_path,
+              file_path:i.file_path
+            })
+        })
+        //console.log(self.movies.ref);
+        self.percentComplete=Math.round(100*self.crawled*self.buffer/(self.count+1));
+       // k()
+         //})
+         if(self.crawled==2)
+         self.adapter.reload();
+         if(self.atBottom)
+         {self.adapter.reload(self.movies.ref.length);}
+         
+      })
+      
+      ipcBackend.on('remainingcatch',(e,d)=>{
+       // $scope.$apply(()=>{
+                self.crawled++;
+              var data=JSON.parse(d);
               
-      }
-      self.getState=function()
-      {
-            var len = self.states.length;
-            for(i=0;i<len;i++)
-            {
-                if(self.states[i].name==self.city_m)
-                {
-                    var t= self.states[i].state;
-                    self.state_m=t;
-                    break;
-                }
-            }
-      };
-      
+            data.forEach((i)=>{
 
+                 self.moviesDetails.push(i)
+               self.movies.ref.push({
+              original_title:i.original_title,
+              release_group:i.release_group,
+              type:i.type,
+              year:i.year,
+              vote_average:i.vote_average,
+              poster_path:i.poster_path,
+              file_path:i.file_path
+            })
 
-
-        self.setPatient=function(data){
+            })
+        //})
         
-        var dataParsed=data[0];
-        self.name=dataParsed.name;
-        self.age=parseInt( dataParsed.age) ;
-        self.gender=dataParsed.gender;
-        self.comments=dataParsed.comments;
-        self.city_m=dataParsed.city;
-        self.state_m=dataParsed.state;
-        self.address=dataParsed.address;
-        self.phone1=dataParsed.mobile[0];
-        self.phone2=dataParsed.mobile[1];
-        self.Prescriptions=dataParsed.prescription;
-        self.Symptoms=dataParsed.symptoms;
-        self.attachments= dataParsed.attachments;
+      })
+      ipcBackend.once('buildinglibrary',()=>{
+       // $scope.$apply(()=>{
+          self.buildingLibrary=true
+        //});
+      })
+      ipcBackend.once('caching',()=>{
+         //$scope.$apply(()=>{
+           self.caching=true
+          //});
+      })
+
+
+
         
-       }
-
-        self.clearCache=function(){
-        
-        self.name=undefined;
-        self.age=undefined;
-        self.gender=undefined;
-        self.comments=undefined;
-        self.city_m=undefined;
-        self.state_m=undefined;
-        self.address=undefined;
-        self.phone1=undefined;
-        self.phone2=undefined;
-        self.Prescriptions=undefined;
-        self.Symptoms=undefined;
-        self.NewSymptoms=[];
-        self.NewPrescriptionInfo=undefined;
-        self.editMode=false;
-        self.selectedFiles=undefined;
-        self.attachments=undefined;
-        self.newSymptomInfo=undefined;
-        Medicines.selectedItem=undefined;
-        Medicines.searchText=undefined;
-        Medicines.medicinesList=[];
-        Medicines.medicinesListOpen=undefined;
-       }
 
 
-       self.ToggleEditMode=function()
-       {
-         if(self.editMode==false)
-              self.editMode=true;
-         else
-            self.editMode=false;
-       }
-
-        self.deleteDialogConfirm=function(_id){
-      
-          self.removePatient(_id);
-          $mdDialog.cancel();
-      
-        }
-        self.removePatient=function(_id)
-        {
-            return $http({
-                method:'GET',
-                url: 'http://localhost:'+self.port+'/patients/'+_id+'/delete'
-              })
-        }
-        self.getPatient=function(_id)
-        {
-              return $http({
-                method:'GET',
-                url: 'http://localhost:'+self.port+'/patients/'+_id+'/get'
-              })
-        }
-
-        self.getPatientCards=function()
-        {
-             return $http({
-                method:'GET',
-                url: 'http://localhost:'+self.port+'/cards'
-                  })
-        }
-       self.refreshCards=function()
-        {
-             self.getPatientCards()
-            .then(function(res){
-              
-               var content = res.data;
-                self.PatientCards=content;
+})
+.directive('scrolly',function (MovieBuffer) {
+    return {
+        restrict: 'A',
+        link: function ($scope, element, attrs) {
+            var raw = element[0];
+            console.log('loading directive');
+            element.bind('scroll', function () {
+                console.log('in scroll');
+                console.log(raw.scrollTop + raw.offsetHeight);
+                console.log(raw.scrollHeight);
+                if (raw.scrollTop + raw.offsetHeight >= raw.scrollHeight-1) { //at the bottom
+                    MovieBuffer.atBottom=1;}
+                else
+                    MovieBuffer.atBottom=0;
+                
             })
         }
-       
-       
-        
-        self.NewSymptoms=[];
-        
-        self.mdForm=null;
-        self.newSymptomDate=new Date();
-        self.addNewSymptom=function(){
-            self.NewSymptoms.unshift({'info': self.newSymptomInfo,'date': self.newSymptomDate});
-            self.newSymptomInfo=undefined;
-        }; 
-
-
-
-      self.sendNewSymptoms=function(_id)
-      {
-         return $http({
-           method:'POST',
-           url:'http://localhost:'+self.port+'/patients/'+_id+'/update/symptoms',
-           data:self.NewSymptoms
-          });
-      }
-      self.sendNewPrescription=function(_id)
-      {
-         return $http({
-           method:'POST',
-           url:'http://localhost:'+self.port+'/patients/'+_id+'/update/followups',
-           data:{'info':{'description':self.NewPrescriptionInfo,'medicines':Medicines.medicinesList}}
-          });
-      }
-
-      self.sendMultipart=function(qstring,_id)
-      {
-        
-         var myFormData={
-         'name':self.name,
-         'age':self.age,
-         'city':self.city_m,
-         'gender':self.gender,
-         'state':self.state_m,
-         'address':self.address,
-         'phone1':self.phone1,
-         'phone2':self.phone2,
-         'comments':self.comments,
-         'attachments':self.selectedFiles
-         };
-         //
-         if(qstring=='add')
-         return Upload.upload({
-            method:'POST',
-            url:'http://localhost:'+self.port+'/patients/add',
-            data:myFormData,
-         }) 
-         
-        
-          else if(qstring=='update')
-          return Upload.upload({
-            method:'POST',
-            url:'http://localhost:'+self.port+'/patients/'+_id+'/update/personals',
-            data:myFormData,
-          })
-      }
-
-     
-
-});
+    }});
